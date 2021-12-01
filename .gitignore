@@ -1,3 +1,4 @@
 .idea
 extracted_mp3s
 *.pickle
+*.log
