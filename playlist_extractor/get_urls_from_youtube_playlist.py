@@ -1,18 +1,19 @@
-from selenium import webdriver  # pip install selenium
+from selenium import webdriver
 import time
 import yaml
 import Youtube_to_mp3
 import os
 
+from results_as_we_go import results_as_we_go
 
 def get_urls_from_playlist(youtube_playlist_url=None):
     output_dict = {}
     if youtube_playlist_url == None:
         print('Please enter a valid YouTube playlist url')
         return
-    # make sure you download chrome driver from https://chromedriver.chromium.org/downloads and put it in folder 'driver'
+
     driver = webdriver.Firefox()
-    driver.get(youtube_playlist_url)  # put here your link
+    driver.get(youtube_playlist_url)
     # scroll page down
     old_position = 0
     new_position = None
@@ -29,7 +30,8 @@ def get_urls_from_playlist(youtube_playlist_url=None):
         new_position = driver.execute_script(position_script)
     source_page = driver.page_source
     driver.quit()
-    # extract the url's and name's
+
+    # extract the urls and names
     counter = 1
     element_to_find = 'amp;index={}" ar'
     video_index = source_page.find(element_to_find.format(counter))  # 'amp;index=1" ar'
@@ -57,35 +59,42 @@ def get_urls_from_playlist(youtube_playlist_url=None):
         filesafe_string = ''.join(e for e in name if e.isalnum())
         video_url = 'https://www.youtube.com/watch?v=' + video_id
 
-
-
         output_dict[video_url] = filesafe_string
 
     return output_dict
 
 
-with open('../youtube_playlists.yaml', 'r') as f:
-    open_file = f.read()
-    playlists = yaml.load_all(open_file, Loader=yaml.FullLoader)
+def get_playlists_from_yaml():
+    with open('../youtube_playlists.yaml', 'r') as f:
+        open_file = f.read()
+        playlists = yaml.load_all(open_file, Loader=yaml.FullLoader)
 
-os.chdir('../extracted_mp3s')
-for dict in playlists:
-    print(f'Grabbing {dict["name"]}')
-    url_dict = get_urls_from_playlist(dict['url'])
-
-keys = list(url_dict.keys())
-
-print('Downloading.  Youtube_DL already checks if a file exists before downloading...')
-
-for key in keys:
-    try:
-        Youtube_to_mp3.youtube_to_mp3([key])
-    except Exception as e:
-        print(e)
-        continue
-
-print(url_dict)
+    return playlists
 
 
+def download_audio_from_videos_in_playlists(playlists):
+    os.chdir('../extracted_mp3s')
+    for dict in playlists:
+        print(f'Grabbing {dict["name"]}')
+        url_dict = get_urls_from_playlist(dict['url'])
+
+        keys = url_dict.keys()
+
+        print('Downloading.  Youtube_DL already checks if a file exists before downloading...')
+
+        def get_mp3(url):
+            try:
+                print(url)
+                Youtube_to_mp3.youtube_to_mp3([url])
+            except Exception as e:
+                print(e)
+
+        # Multithreaded for great justice.
+        results_as_we_go(get_mp3, keys)
 
 
+        print(url_dict)
+
+
+generated_playlists = get_playlists_from_yaml()
+download_audio_from_videos_in_playlists(generated_playlists)

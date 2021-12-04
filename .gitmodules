@@ -1,0 +1,3 @@
+[submodule "multiprocessing"]
+	path = multiprocessing
+	url = https://github.com/biohoo/asynchronous_computing
